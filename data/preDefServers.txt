@@ -1,0 +1,38 @@
+@vangersnet
+ name: vangers.net
+ port: 2197
+ engine: default
+ host: dilesoft
+ description: "the main vangers server"
+
+@kdlab
+ name: cloud.kdlab.com
+ port: 2197
+ engine: default
+ host: kdlab
+ description: "kdlab's official server"
+
+@fenex
+ name: fenex.vangers.net
+ port: 2197
+ engine: rust
+ host: fenex
+ description: "fenex's rust server"
+
+@kiv2197
+ name: kiv.name
+ port: 2197
+ engine: default
+ host: aid
+ description: "aid's main server"
+ .deprecated
+
+@kiv2195
+ name: kiv.name
+ port: 2195
+ engine: default
+ host: aid
+ description: "aid's cx server"
+ .deprecated
+
+*outputArray: vangersnet , kdlab , fenex , kiv2197  , kiv2195

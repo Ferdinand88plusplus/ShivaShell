@@ -1,0 +1,27 @@
+SHIVA SHELL
+
+Commands:
+----Global commands----
+	.help - print this text
+	.shtd - shutdown shiva shell
+	.abrt - call std::abort to shutdown shiva shell fast
+	.pstdmp - print packets stack dump
+	.mtaux <isMuted> - mute/unmute aux packets
+	.mtaud <isMuted> - mute/unmute background music
+----Server commands----
+	scn <ip> <port=2197> - connect to server
+	sst - print server connector status
+	sdc - disconnect from server
+	sgl - print server games list
+	smap - get global map of default servers
+----Games  commands----
+	gcn <gameID> - connect to game with id <gameID>
+	gpl <printBody=false> - get list of players in game
+	greg <name> <password> - register name on current game
+	gms <text> - send message on current game (to everyone)
+----Malware comamnds---
+	mgnn - spam with triggers of server memory corrupt using user registering
+	mnni - do nanf injection using PlayerBody.rating
+	mmsi - trigger client's memory access violation using message injection with null name and text
+	mcmp - clear mass-send packet data (not actualy malware)
+-----------------------

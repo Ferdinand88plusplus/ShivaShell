@@ -1,0 +1,8 @@
+
+@musicNames
+ calmTheme: revolve.mp3
+ normalAttackTheme: cleartext.mp3
+ dprAttackIntroTheme: sabotageIntro.mp3
+ dprAttackMainTheme: sabotageMain.mp3
+
+*outputArray: musicNames
