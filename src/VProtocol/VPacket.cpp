@@ -1,15 +1,10 @@
 #include "VPacket.h"
 
-#include "../Tools/SocketTools.h"
-#include "MainSocket.h"
-
-#include <iostream>
-
-//#define VPDBG
+#include "ServerSocket.h"
 
 sf::Time vpMaxReceiveTime = sf::seconds(5.0f);
 
-bool VPacket::readFromServerUsingSize()
+bool VPacket::readFromServer()
 {
 	vpsz_t sz = 0;
 
@@ -30,33 +25,14 @@ bool VPacket::readFromServerUsingSize()
 	return 1;
 }
 
-void VPacket::readFromServerFixedSize(vpsz_t sz)
-{
-	resize(sz);
-
-	subReceive(data(), sz);
-}
-
-#ifdef VPDBG
-#define CHECKSTATUS(writelog) \
-if (status == sf::Socket::Status::Done) {	\
-	std::cout << writelog;	\
-}	\
-else {	\
-	__debugbreak();		\
-}
-#else
-#define CHECKSTATUS()
-#endif
-
 void VPacket::sendToServer()
 {
 	vpsz_t sz = size() + sizeof(vph_t);
 	sf::Socket::Status status;
-	status = mainSocket.send(&sz, sizeof(vpsz_t));
-	status = mainSocket.send(&type, sizeof(vph_t));
+	status = serverSocket.socket.send(&sz, sizeof(vpsz_t));
+	status = serverSocket.socket.send(&type, sizeof(vph_t));
 	if (size()) {
-		mainSocket.send(data(), size());
+		serverSocket.socket.send(data(), size());
 	}
 }
 
@@ -87,7 +63,7 @@ bool VPacket::readString(std::string& into)
 bool VPacket::subReceive(void* buffer, size_t bufsize)
 {
 	size_t receivedSize;
-	sf::Socket::Status receiveStatus = mainSocket.receive(buffer, bufsize, receivedSize);
+	sf::Socket::Status receiveStatus = serverSocket.socket.receive(buffer, bufsize, receivedSize);
 	
 	switch (receiveStatus) {
 	default:

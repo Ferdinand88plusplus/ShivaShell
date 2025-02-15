@@ -7,8 +7,7 @@ typedef unsigned char vph_t;
 // Vangers Packet Size type
 typedef unsigned short vpsz_t;
 
-//! DIRECTLY FROM VANGERS SOURCE CODE
-
+//! FROM VANGERS SOURCE CODE
 
 /*
 		Client - Server interface header
@@ -21,14 +20,14 @@ typedef unsigned short vpsz_t;
 #define AUXILIARY_EVENT 0x80 
 #define ECHO_EVENT 0x20
 
-// Отправляемые и получаемые 
+/// Client <-> Server object packets
 const vph_t  CREATE_OBJECT = 0x02; //znfo 8-| CREATE_OBJECT eq CREATE_PERMANENT_OBJECT
 const vph_t  CREATE_PERMANENT_OBJECT = 0x02;
 const vph_t  DELETE_OBJECT = 0x04;
 const vph_t  UPDATE_OBJECT = 0x08;
 const vph_t  HIDE_OBJECT = 0x0C;
 
-// Служебные отправляемые
+/// Client -> Server packets
 const vph_t  GAMES_LIST_QUERY = 0x81;
 const vph_t  TOP_LIST_QUERY = 0x82; // MP_game(1)
 
@@ -51,8 +50,8 @@ const vph_t  GET_GAME_DATA = 0x93;
 const vph_t  SET_PLAYER_DATA = 0x94; //  PlayerData
 const vph_t  DIRECT_SENDING = 0x95; //  Mask(4), SendData
 
-
-// Служебные получаемые
+/// Server -> Client packets
+// Responses to queries and other
 const vph_t  GAMES_LIST_RESPONSE = 0xC1; // Number(1),{ game_ID(1), game_Name(str) } 
 const vph_t  TOP_LIST_RESPONSE = 0xC2; // MP_game(1), Number(1),{ Name(str), rating(float) } 
 const vph_t  TOTAL_LIST_OF_PLAYERS_DATA = 0xCC; // Number(1),{ client_ID(1), BodySize(2) , Body, Name(str) } 
@@ -68,7 +67,7 @@ const vph_t  SET_WORLD_RESPONSE = 0xC8; // World(1), Response(1) = 1/0
 const vph_t  GAME_DATA_RESPONSE = 0xCD; // GameData
 const vph_t  DIRECT_RECEIVING = 0xCE; // ReceiveData
 
-
+// Auxiliaries
 const vph_t  PLAYERS_NAME = 0xD5; // Client(1), string
 const vph_t  PLAYERS_POSITION = 0xCF; // Client(1),x(2),y(2), only for current world
 const vph_t  PLAYERS_WORLD = 0xD1; // Client(1),world(1), for all
@@ -76,55 +75,10 @@ const vph_t  PLAYERS_STATUS = 0xD2; // Client(1),status(1), for all
 const vph_t  PLAYERS_DATA = 0xD3; // Client(1),data,  for all
 const vph_t  PLAYERS_RATING = 0xD4; // Client(1),rating(float), for me
 
-
-//zmod fixed
-//модовые константы
+/// zMod packets
 const vph_t  zSERVER_VERSION_RESPONSE = 0xE1; // version(4)
 const vph_t  zGAME_DATA_RESPONSE = 0xE2; // mod_id(4)
 const vph_t  zTIME_RESPONSE = 0xE3; // time(4)
-
-const vph_t  zCREATE_OBJECT_BY_CLIENT = 0xE4; // GLOBAL_CLOCK(4),Type(1),ID(1),BodySize(1),Body(array)
-const vph_t  zCREATE_OBJECT_BY_SERVER = 0xE5; // NOT KNOWN YET
-
-// кароче эти айди используются (или по крайней мере должны) только в трех... уже двух, вышеперечисленных евентах
-// а поэтому все на йух
-const vph_t  zOBJ_ID_DOLLY = 0x01;
-
-/*****************************************************************
- Структура идентификатора объекта:
- [признак глобальности - 1][station - 5][world - 4][тип объекта - 6][counter - 16]
- первые восемь типов - личные вещи игрока
- [1 - 10] - автоматически удаляемые типы
-station = 00000 - объект, не имеющий создателя
-всего может быть 31 игрок, [1 - 31]
-*****************************************************************/
-const int MAX_NID_OBJECT = 15;
-
-const int NID_GLOBAL = 0 << 16;
-
-const int NID_DEVICE = 1 << 16;
-const int NID_SLOT = 2 << 16;
-const int NID_SHELL = 3 << 16;
-
-const int NID_VANGER = 9 << 16;
-const int NID_STUFF = 11 << 16;
-const int NID_SENSOR = (12 << 16) | (1 << 31);
-const int NID_TNT = (14 << 16) | (1 << 31);
-const int NID_TERRAIN = (15 << 16) | (1 << 31);
-
-#define CLIENT_ID(ID)			((ID >> 26) & 31)
-#define GET_STATION(id)		     ((id >> 26) & 31)
-#define GET_WORLD(id)	             ((id >> 22) & 15)
-#define GET_OBJECT_TYPE(id)	((id) & (63 << 16))
-
-#define NON_STATIC(ID)		(!(ID & (1 << 31)))
-#define PLAYERS_OBJECT(ID)		(!(ID & (7 << (16 + 3))))
-#define PRIVATE_OBJECT(ID)	 (((ID >> 16) & 63) >= 8 && ((ID >> 16) & 63) <= 10)
-#define NON_GLOBAL_OBJECT(ID)		(((ID >> 16) & 63))
-
-#define INITIAL_STATUS	0
-#define GAMING_STATUS	1
-#define FINISHED_STATUS	  2
 
 /*******************************************************************************
 				Game's data
@@ -216,27 +170,6 @@ struct ServerData {
 	};
 
 	ServerData() {};
-};
-
-//zmod fixed.
-struct zServerData {
-	int mod_id;
-
-	void clear() { memset(this, 0, sizeof(zServerData)); }
-	zServerData() { clear(); }
-};
-struct zCreateObjectQueue {
-	int type, world;
-	zCreateObjectQueue* next;
-	zCreateObjectQueue* prev;
-	zCreateObjectQueue(int Type, int World) {
-		next = prev = 0;
-		type = Type; world = World;
-	}
-	~zCreateObjectQueue() {
-		if (next) next->prev = prev;
-		if (prev) prev->next = next;
-	}
 };
 
 /*******************************************************************************

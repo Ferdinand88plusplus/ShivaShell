@@ -1,6 +1,6 @@
 #include "InputVPacketManager.h"
 
-#include "MainSocket.h"
+#include "ServerSocket.h"
 
 void InputVPacketManager::receive()
 {
@@ -8,32 +8,22 @@ void InputVPacketManager::receive()
 		currentPacket = &packetStack.emplace_back();
 	}
 
-	mainSocket.setBlocking(0);
-	if (currentPacket->readFromServerUsingSize()) {
-		// erase empty packets (aka keepalive packets)
+	serverSocket.socket.setBlocking(0);
+	if (currentPacket->readFromServer()) {
+		// erase empty packets
 		if (currentPacket->empty()) {
 			packetStack.pop_back();
 		}
 		currentPacket = 0;
 	}
-	mainSocket.setBlocking(1);
+	serverSocket.socket.setBlocking(1);
 }
 
-void InputVPacketManager::init()
-{
-}
-
-bool InputVPacketManager::takePacket(vph_t typeFilter, VPacket& writeBuffer)
+bool InputVPacketManager::findPacket(vph_t typeFilter, VPacket& writeBuffer)
 {
 	for (int i = 0; i < packetStack.size(); i++) {
 		if (packetStack[i].type != typeFilter)
 			continue;
-
-		void* ERASE_POINTER = &packetStack[i];
-
-		size_t sz = packetStack.size();
-
-		bool isInRange = sz > i && i >= 0;
 
 		writeBuffer = packetStack[i];
 		packetStack.erase(packetStack.begin() + i);
@@ -51,7 +41,7 @@ bool InputVPacketManager::waitPacket(vph_t typeFilter, VPacket& writeBuffer)
 	waitingClock.restart();
 
 	while (1) {
-		if (takePacket(typeFilter, writeBuffer)) {
+		if (findPacket(typeFilter, writeBuffer)) {
 			return 1;
 		}
 

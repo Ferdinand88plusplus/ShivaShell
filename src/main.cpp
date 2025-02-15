@@ -2,9 +2,7 @@
 
 int main()
 {
-	ShivaShell shiva;
-
-	shiva.run();
+	ShivaShell::run();
 
 	return 0;
 }

@@ -2,7 +2,13 @@
 
 #define CUR2END_CYCLE() (currentPos; currentPos < myData.size(); currentPos++)
 
-bool fStringStream::tryReadWord(std::string& output)
+void fStringStream::resetString(const std::string &source)
+{
+	myData = source;
+	currentPos = 0;
+}
+
+bool fStringStream::tryReadWord(std::string &output)
 {
 	output.clear();
 

@@ -11,6 +11,8 @@ public:
 	std::string myData;
 	size_t currentPos = 0;
 
+	void resetString(const std::string& source);
+
 	// reads the word splitted by spaces
 	bool tryReadWord(std::string& output);
 

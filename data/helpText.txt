@@ -10,18 +10,18 @@ Commands:
 	.mtaud <isMuted> - mute/unmute background music
 ----Server commands----
 	scn <ip> <port=2197> - connect to server
-	sst - print server connector status
+	sst - print server socket status
 	sdc - disconnect from server
-	sgl - print server games list
-	smap - get global map of default servers
+	sgl - print server's games list
+	smap - print global map of default servers and their state
 ----Games  commands----
-	gcn <gameID> - connect to game with id <gameID>
-	gpl <printBody=false> - get list of players in game
+	gcn <gameID> - connect to game
+	gpl <printBody=false> - print list of players in current game
 	greg <name> <password> - register name on current game
-	gms <text> - send message on current game (to everyone)
+	gms <text> - send message into current game
 ----Malware comamnds---
-	mgnn - spam with triggers of server memory corrupt using user registering
+	mmsw - trigger client's sigsegv error using message text overflow
+	murw - trigger client's sigsegv error using user name overflow (makes current game unconnectable!)
 	mnni - do nanf injection using PlayerBody.rating
-	mmsi - trigger client's memory access violation using message injection with null name and text
-	mcmp - clear mass-send packet data (not actualy malware)
+	mmsi - trigger client's memory access violation using empty message (requires be NOT registered in the game)
 -----------------------

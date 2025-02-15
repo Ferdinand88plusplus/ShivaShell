@@ -15,8 +15,7 @@ public:
 
 	/// SERVER IO MANIPULATIONS ///
 
-	bool readFromServerUsingSize();
-	void readFromServerFixedSize(vpsz_t sz);
+	bool readFromServer();
 	void sendToServer();
 
 	template<typename read_t>

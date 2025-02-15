@@ -1,18 +1,16 @@
 #pragma once
 
-#include "VProtocol/ServerConnector.h"
+#include "VProtocol/ServerSocket.h"
 #include "VProtocol/VPacket.h"
-#include "VProtocol/MainSocket.h"
+#include "VProtocol/InputVPacketManager.h"
 
 #include "Cosmetic/AudioUtil.h"
 
-#include "IO/PredefServersConfigParser.h"
+#include "DefaultServersMap.h"
 #include "IO/fFile.h"
 
 #include <iostream>
-#include <sstream>
-#include <fstream>
-#include <thread>
+#include <vector>
 #include <cmath>
 
 enum ShivaState {
@@ -21,40 +19,30 @@ enum ShivaState {
 	DprAttack,
 };
 
-class ShivaShell
+namespace ShivaShell
 {
-public:
 
+	// Main run cycle functions
 	void run();
-
-private:
-	
-	fStringStream commlineParser;
-	bool abortSession = false;
-
-	ShivaState currentState = ShivaState::Calm;
-
-	std::vector<PredefServerInfo> predefServers;
-	PredefServerInfo* predefCurrentInfo = 0;
-	
-	std::string helpText;
-	
 	void init();
 	void tick();
 
-	void initPassemblosTemplate();
-	void loadPredefServers();
+	// Inititalizating ShivaShell
+	void createPassemblosTemplate();
+	void createOverflowText();
+	void loadHelpText();
+	void printWelcomeText();
 
+	// Receiving and parsing new command
 	std::string getCommand();
+	void convertBytes(std::string& string);
 	void parseCommand(const std::string& commline);
 	void routeCmdName(std::string& cmd);
 
-	bool malwareCheckServer();
+	// Stage between command parsing and command executing
+	bool isServerCanBeAttacked(); // Only for malwares
 
-	void openMassPacketThreads(int threadNum);
-
-	// dc = Do Command
-
+	// Commands executing; dc = Do Command
 	void dc_Help();
 	void dc_Shtd();
 	void dc_Abrt();
@@ -73,9 +61,9 @@ private:
 	void dcGreg();
 	void dcGms();
 
-	void dcMgnn();
+	void dcMmsw();
+	void dcMurw();
 	void dcMnni();
-	void dcMcmp();
 	void dcMmsi();
 };
 
